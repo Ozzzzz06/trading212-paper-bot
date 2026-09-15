@@ -177,20 +177,27 @@ def main():
     symbol_rows = []
 
     for symbol in ["SPY", "QQQ", "GLD", "TLT"]:
-        trades, final_equity = run_single_symbol_backtest(symbol)
-        all_trades.extend(trades)
-
-        summary = summarise_trades(trades, final_equity)
-        summary.insert(0, "symbol", symbol)
-        symbol_rows.append(summary)
-
-        print(f"\n=== {symbol} ===")
-        print(summary.to_string(index=False))
-
-    full_summary = pd.concat(symbol_rows, ignore_index=True)
-
-    print("\n=== COMBINED SUMMARY ===")
-    print(full_summary.to_string(index=False))
+        try:
+            trades, final_equity = run_single_symbol_backtest(symbol)
+            all_trades.extend(trades)
+    
+            summary = summarise_trades(trades, final_equity)
+            summary.insert(0, "symbol", symbol)
+            symbol_rows.append(summary)
+    
+            print(f"\n=== {symbol} ===")
+            print(summary.to_string(index=False))
+    
+        except Exception as exc:
+            print(f"\n=== {symbol} FAILED ===")
+            print(str(exc))
+            
+    if symbol_rows:
+        full_summary = pd.concat(symbol_rows, ignore_index=True)
+        print("\n=== COMBINED SUMMARY ===")
+        print(full_summary.to_string(index=False))
+    else:
+        raise RuntimeError("No symbols completed successfully.")
 
     if all_trades:
         trades_df = pd.DataFrame([t.__dict__ for t in all_trades])
