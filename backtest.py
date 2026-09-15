@@ -49,23 +49,33 @@ def run_single_symbol_backtest(symbol: str) -> tuple[list[Trade], float]:
         current = df.iloc[i]
         previous = df.iloc[i - 1]
 
+        prev_ema_fast = float(previous["ema_fast"])
+        prev_ema_slow = float(previous["ema_slow"])
+        curr_ema_fast = float(current["ema_fast"])
+        curr_ema_slow = float(current["ema_slow"])
+        curr_close = float(current["close"])
+        curr_ema_trend = float(current["ema_trend"])
+        curr_atr = float(current["atr"])
+        curr_low = float(current["low"])
+        curr_high = float(current["high"])
+        
         crossed_up = (
-            previous["ema_fast"] <= previous["ema_slow"]
-            and current["ema_fast"] > current["ema_slow"]
+            prev_ema_fast <= prev_ema_slow
+            and curr_ema_fast > curr_ema_slow
         )
-
+        
         crossed_down = (
-            previous["ema_fast"] >= previous["ema_slow"]
-            and current["ema_fast"] < current["ema_slow"]
+            prev_ema_fast >= prev_ema_slow
+            and curr_ema_fast < curr_ema_slow
         )
 
         if not in_position:
-            if crossed_up and current["close"] > current["ema_trend"]:
-                stop_distance = 2.0 * current["atr"]
+            if crossed_up and curr_close > curr_ema_trend:
+                stop_distance = 2.0 * curr_atr
 
                 qty = calculate_quantity(
                     equity=equity,
-                    entry_price=float(current["close"]),
+                    entry_price=curr_close,
                     stop_distance=float(stop_distance),
                     risk_fraction=RISK_PER_TRADE,
                     max_position_fraction=MAX_POSITION_EXPOSURE,
@@ -76,7 +86,7 @@ def run_single_symbol_backtest(symbol: str) -> tuple[list[Trade], float]:
                     quantity = qty
                     stop_price, take_profit_price = calculate_exit_prices(
                         entry_price=entry_price,
-                        atr=float(current["atr"]),
+                        atr=curr_atr,
                         stop_multiplier=2.0,
                         reward_multiple=2.0,
                     )
@@ -89,10 +99,10 @@ def run_single_symbol_backtest(symbol: str) -> tuple[list[Trade], float]:
             exit_reason = None
             exit_price = None
 
-            if float(current["low"]) <= stop_price:
+            if curr_low <= stop_price:
                 exit_price = stop_price * (1 - SLIPPAGE_FRACTION)
                 exit_reason = "stop_loss"
-            elif float(current["high"]) >= take_profit_price:
+            elif curr_high >= take_profit_price:
                 exit_price = take_profit_price * (1 - SLIPPAGE_FRACTION)
                 exit_reason = "take_profit"
             elif crossed_down:
