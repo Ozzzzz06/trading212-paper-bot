@@ -1,54 +1,54 @@
-import time
+from pathlib import Path
 import pandas as pd
-import yfinance as yf
 
 
-def fetch_hourly_data(symbol: str, period: str = "60d", retries: int = 4) -> pd.DataFrame:
-    last_error = None
+DATA_DIR = Path("market_data")
 
-    for attempt in range(1, retries + 1):
-        try:
-            df = yf.download(
-                tickers=symbol,
-                period=period,
-                interval="1h",
-                auto_adjust=False,
-                progress=False,
-                threads=False,
-                group_by="column",
-            )
 
-            if df.empty:
-                raise RuntimeError(f"No data returned for {symbol}")
+def fetch_csv_data(symbol: str) -> pd.DataFrame:
+    """
+    Load OHLCV data from a local CSV file in market_data/.
 
-            if isinstance(df.columns, pd.MultiIndex):
-                if symbol in df.columns.get_level_values(-1):
-                    df = df.xs(symbol, axis=1, level=-1)
-                else:
-                    df.columns = df.columns.get_level_values(0)
+    Expected filename:
+        market_data/SPY.csv
+        market_data/QQQ.csv
+        market_data/GLD.csv
+        market_data/TLT.csv
 
-            df.columns = [str(c).lower() for c in df.columns]
+    Expected columns:
+        datetime, open, high, low, close, volume
 
-            required = ["open", "high", "low", "close", "volume"]
-            missing = [c for c in required if c not in df.columns]
-            if missing:
-                raise RuntimeError(
-                    f"{symbol} missing columns {missing}. Returned columns: {list(df.columns)}"
-                )
+    Column names are normalised to lowercase.
+    """
+    file_path = DATA_DIR / f"{symbol}.csv"
 
-            df = df[required].copy()
-            df = df.apply(pd.to_numeric, errors="coerce").dropna()
+    if not file_path.exists():
+        raise RuntimeError(
+            f"CSV file not found for {symbol}: {file_path}"
+        )
 
-            if df.empty:
-                raise RuntimeError(f"{symbol} returned only missing values")
+    df = pd.read_csv(file_path)
 
-            return df
+    df.columns = [str(c).strip().lower() for c in df.columns]
 
-        except Exception as exc:
-            last_error = exc
-            if attempt < retries:
-                time.sleep(5 * attempt)
-            else:
-                raise RuntimeError(
-                    f"Failed to fetch data for {symbol} after {retries} attempts: {exc}"
-                ) from exc
+    required = ["datetime", "open", "high", "low", "close", "volume"]
+    missing = [c for c in required if c not in df.columns]
+
+    if missing:
+        raise RuntimeError(
+            f"{symbol} CSV is missing columns {missing}. "
+            f"Found columns: {list(df.columns)}"
+        )
+
+    df = df[required].copy()
+    df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")
+    df = df.dropna()
+
+    for col in ["open", "high", "low", "close", "volume"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna()
+    df = df.sort_values("datetime").reset_index(drop=True)
+    df = df.set_index("datetime")
+
+    return df
