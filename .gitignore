@@ -1,0 +1,39 @@
+# Environment and secrets — NEVER commit these
+.env
+*.env
+secrets.py
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Logs and databases
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Data cache (generated locally, not committed)
+data/
+cache/

@@ -1,0 +1,43 @@
+name: Trading 212 paper trader
+
+# Runs automatically at 5 minutes past every hour (UTC).
+# Also runnable manually from the Actions tab with the "Run workflow" button.
+# UTC cron: adjust for UK timezone yourself (BST = UTC+1, GMT = UTC+0).
+
+on:
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paper-trader:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run paper trader
+        env:
+          T212_API_KEY: ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+        run: python paper_runner.py
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-log
+          path: "*.log"
+          if-no-files-found: ignore
