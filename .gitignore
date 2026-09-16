@@ -1,39 +1,46 @@
-# Environment and secrets — NEVER commit these
+# Trading 212 credentials and local configuration
 .env
-*.env
+.env.*
+*.secret
+*.key
 secrets.py
 
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Tool/editor folders
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Build / packaging
 build/
 dist/
 *.egg-info/
 .eggs/
 
-# Virtual environments
-venv/
-.venv/
-env/
-
-# Logs and databases
-*.log
+# Local databases and logs
 *.db
 *.sqlite
 *.sqlite3
+*.log
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# macOS
-.DS_Store
-
-# Data cache (generated locally, not committed)
-data/
-cache/
+# Generated backtest outputs
+equity_curve_*.csv
+trades_*.csv
+portfolio_summary_*.csv
+portfolio_by_symbol_*.csv
+benchmark_equity_curve.csv
