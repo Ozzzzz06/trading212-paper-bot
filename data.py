@@ -29,7 +29,6 @@ def fetch_csv_data(symbol: str) -> pd.DataFrame:
 
     required = ["datetime", "open", "high", "low", "close", "volume"]
     missing = [c for c in required if c not in df.columns]
-
     if missing:
         raise RuntimeError(
             f"{symbol} CSV is missing columns {missing}. "
