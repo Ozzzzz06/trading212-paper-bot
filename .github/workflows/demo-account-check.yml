@@ -26,12 +26,7 @@ jobs:
       - name: Read demo account summary
         shell: bash
         run: |
-          status=$(curl --silent --show-error \
-            --output /tmp/t212-response.json \
-            --write-out "%{http_code}" \
-            --user "$T212_API_KEY:$T212_API_SECRET" \
-            --header "Accept: application/json" \
-            "${T212_BASE_URL}/equity/account/summary")
+          status=$(curl --silent --show-error --output /tmp/t212-response.json --write-out "%{http_code}" --user "$T212_API_KEY:$T212_API_SECRET" --header "Accept: application/json" "${T212_BASE_URL}/equity/account/summary")
           echo "HTTP status: $status"
           if [ "$status" != "200" ]; then
             echo "Demo account check failed; response body is not displayed."
