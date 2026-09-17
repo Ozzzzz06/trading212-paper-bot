@@ -1,0 +1,38 @@
+name: Trading 212 demo account check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-demo-account:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      T212_API_KEY: ${{ secrets.T212_API_KEY }}
+      T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+      T212_BASE_URL: https://demo.trading212.com/api/v0
+
+    steps:
+      - name: Verify credentials are configured
+        shell: bash
+        run: |
+          test -n "$T212_API_KEY" || { echo "T212_API_KEY is missing"; exit 1; }
+          test -n "$T212_API_SECRET" || { echo "T212_API_SECRET is missing"; exit 1; }
+          echo "Demo credentials are configured"
+
+      - name: Read demo account summary
+        shell: bash
+        run: |
+          status=$(curl --silent --show-error --output /tmp/t212-response.json --write-out "%{http_code}" \\
+            --user "$T212_API_KEY:$T212_API_SECRET" \\
+            --header "Accept: application/json" \\
+            "$T212_BASE_URL/equity/account/summary")
+          echo "HTTP status: $status"
+          if [ "$status" != "200" ]; then
+            echo "Demo account check failed; response body is not displayed."
+            exit 1
+          fi
+          echo "Demo account summary read successfully; response body is not displayed."
