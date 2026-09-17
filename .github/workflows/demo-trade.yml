@@ -1,0 +1,80 @@
+name: Trading 212 guarded demo trade
+
+on:
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: "Instrument ticker, for example AAPL"
+        required: true
+        type: string
+      quantity:
+        description: "Whole-number quantity"
+        required: true
+        type: number
+      confirm_demo_trade:
+        description: "Type I UNDERSTAND DEMO"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  demo-trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      T212_API_KEY: ${{ secrets.T212_API_KEY }}
+      T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+      T212_BASE_URL: https://demo.trading212.com/api/v0
+      SYMBOL: ${{ inputs.symbol }}
+      QUANTITY: ${{ inputs.quantity }}
+      CONFIRM_DEMO_TRADE: ${{ inputs.confirm_demo_trade }}
+
+    steps:
+      - name: Validate request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_DEMO_TRADE" = "I UNDERSTAND DEMO"
+          test -n "$T212_API_KEY"
+          test -n "$T212_API_SECRET"
+          [[ "$SYMBOL" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$QUANTITY" =~ ^[1-9][0-9]*$ ]]
+          test "$QUANTITY" -le 10
+
+      - name: Check instrument and account
+        shell: bash
+        run: |
+          set -euo pipefail
+          instruments_status=$(curl --silent --show-error --output /tmp/t212-instruments.json --write-out "%{http_code}" --user "$T212_API_KEY:$T212_API_SECRET" --header "Accept: application/json" "${T212_BASE_URL}/equity/metadata/instruments")
+          test "$instruments_status" = "200"
+          python - "$SYMBOL" <<'PY'
+          import json, sys
+          symbol = sys.argv[1].upper()
+          with open('/tmp/t212-instruments.json', encoding='utf-8') as f:
+              data = json.load(f)
+          rows = data if isinstance(data, list) else data.get('items', data.get('instruments', []))
+          if not any(str(row.get('ticker', row.get('symbol', ''))).upper() == symbol for row in rows if isinstance(row, dict)):
+              raise SystemExit(f"Instrument not found: {symbol}")
+          PY
+          account_status=$(curl --silent --show-error --output /tmp/t212-account.json --write-out "%{http_code}" --user "$T212_API_KEY:$T212_API_SECRET" --header "Accept: application/json" "${T212_BASE_URL}/equity/account/summary")
+          test "$account_status" = "200"
+
+      - name: Place one demo market order
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl --silent --show-error --output /tmp/t212-order.json --write-out "%{http_code}" --user "$T212_API_KEY:$T212_API_SECRET" --header "Accept: application/json" --header "Content-Type: application/json" --data "{\"ticker\":\"${SYMBOL^^}\",\"quantity\":${QUANTITY}}" --request POST "${T212_BASE_URL}/equity/orders/market")
+          echo "Order HTTP status: $status"
+          test "$status" = "200" || test "$status" = "201"
+          python - <<'PY'
+          import json
+          with open('/tmp/t212-order.json', encoding='utf-8') as f:
+              data = json.load(f)
+          if isinstance(data, dict):
+              safe = {k: data[k] for k in ('id', 'status', 'ticker', 'quantity', 'filledQuantity') if k in data}
+              print(f"Demo order accepted: {safe}")
+          else:
+              print("Demo order accepted")
+          PY
